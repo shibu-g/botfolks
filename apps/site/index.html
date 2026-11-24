@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Botfolks — AI support chatbot trained on your website</title>
+  <meta name="description" content="Train an AI chatbot on your website, files and FAQs. Answer customers 24/7, capture leads, any language. Start free." />
+  <style>
+    :root { --bg:#0b1020; --panel:#121a33; --line:#222c4d; --text:#e8ebf5; --muted:#8e97b5; --accent:#8b7cff; --good:#36d399; }
+    * { box-sizing: border-box; } body { margin:0; font-family: Inter, system-ui, sans-serif; background:var(--bg); color:var(--text); }
+    .wrap { max-width: 1080px; margin: 0 auto; padding: 0 24px; }
+    nav { display:flex; justify-content:space-between; align-items:center; padding:22px 0; }
+    .logo { font-weight:800; font-size:22px; } .logo span { color:var(--accent); }
+    .navlinks { display:flex; align-items:center; gap:22px; }
+    .navlinks a:not(.btn) { color:var(--muted); text-decoration:none; font-size:15px; }
+    .navlinks a:not(.btn):hover { color:var(--text); }
+    a.btn, button.btn { background:var(--accent); color:#fff; padding:11px 18px; border-radius:10px; text-decoration:none; font-weight:600; border:none; font-size:15px; cursor:pointer; }
+    .hero { padding: 90px 0 70px; text-align:center; }
+    .hero h1 { font-size: clamp(34px, 5vw, 56px); line-height:1.1; margin:0 0 18px; }
+    .hero p { color:var(--muted); font-size:19px; max-width:640px; margin:0 auto 30px; }
+    .grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(240px,1fr)); gap:16px; padding-bottom:80px; }
+    .card { background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:22px; }
+    .card h3 { margin:0 0 8px; } .card p { color:var(--muted); margin:0; }
+    section.section { padding: 70px 0; border-top:1px solid var(--line); }
+    .section-head { text-align:center; max-width:620px; margin:0 auto 44px; }
+    .section-head h2 { font-size: clamp(28px, 4vw, 38px); margin:0 0 12px; }
+    .section-head p { color:var(--muted); font-size:17px; margin:0; }
+
+    .toggle { display:flex; justify-content:center; align-items:center; gap:12px; margin-bottom:40px; }
+    .toggle button { background:var(--panel); border:1px solid var(--line); color:var(--muted); padding:9px 18px; border-radius:999px; font-weight:600; cursor:pointer; font-size:14px; }
+    .toggle button.active { background:var(--accent); color:#fff; border-color:var(--accent); }
+    .toggle .save { color:var(--good); font-size:13px; font-weight:600; }
+
+    .plans { display:grid; grid-template-columns: repeat(4, 1fr); gap:16px; }
+    @media (max-width: 900px) { .plans { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 560px) { .plans { grid-template-columns: 1fr; } }
+    .plan { background:var(--panel); border:1px solid var(--line); border-radius:16px; padding:26px 22px; display:flex; flex-direction:column; position:relative; }
+    .plan.popular { border-color:var(--accent); }
+    .plan .badge { position:absolute; top:-12px; left:50%; transform:translateX(-50%); background:var(--accent); color:#fff; font-size:12px; font-weight:700; padding:4px 12px; border-radius:999px; white-space:nowrap; }
+    .plan h3 { margin:6px 0 4px; font-size:18px; }
+    .plan .price { font-size:36px; font-weight:800; margin:10px 0 2px; }
+    .plan .price small { font-size:14px; color:var(--muted); font-weight:500; }
+    .plan .yearly-note { font-size:12px; color:var(--good); min-height:16px; margin-bottom:14px; }
+    .plan ul { list-style:none; padding:0; margin:0 0 22px; flex:1; font-size:14px; color:var(--muted); display:flex; flex-direction:column; gap:9px; }
+    .plan ul li::before { content:"✓ "; color:var(--good); font-weight:700; }
+    .plan a.btn { text-align:center; }
+    .plan.free a.btn { background:transparent; border:1px solid var(--line); color:var(--text); }
+
+    .compare { display:flex; gap:20px; flex-wrap:wrap; align-items:stretch; }
+    .compare .vs-card { flex:1; min-width:220px; background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:24px; text-align:center; }
+    .compare .vs-card.us { border-color:var(--accent); }
+    .compare .vs-card .who { font-size:13px; color:var(--muted); text-transform:uppercase; letter-spacing:.04em; margin-bottom:10px; }
+    .compare .vs-card .big { font-size:30px; font-weight:800; }
+    .compare .vs-card .sub { font-size:13px; color:var(--muted); margin-top:6px; }
+    .compare .vs-x { display:flex; align-items:center; justify-content:center; color:var(--muted); font-weight:700; font-size:14px; min-width:36px; }
+    .takeaway { text-align:center; margin-top:28px; font-size:16px; color:var(--text); }
+    .takeaway b { color:var(--good); }
+    .fineprint { text-align:center; color:var(--muted); font-size:12.5px; margin-top:14px; }
+
+    footer { border-top:1px solid var(--line); padding:26px 0; color:var(--muted); font-size:14px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <nav>
+      <div class="logo">Bot<span>folks</span></div>
+      <div class="navlinks">
+        <a href="#pricing">Pricing</a>
+        <a class="btn" href="https://app.botfolks.in/signup">Start free</a>
+      </div>
+    </nav>
+    <section class="hero">
+      <h1>Your website's own AI support agent</h1>
+      <p>Train a chatbot on your website, files and FAQs in minutes. It answers customers 24/7, in their language, and turns visitors into leads.</p>
+      <a class="btn" href="https://app.botfolks.in/signup">Create your free bot</a>
+    </section>
+    <section class="grid">
+      <div class="card"><h3>Trained on your content</h3><p>Paste your URL — we read your pages, PDFs and Q&amp;A.</p></div>
+      <div class="card"><h3>One-line install</h3><p>Copy one script tag into any site: WordPress, Shopify, Wix or custom.</p></div>
+      <div class="card"><h3>Captures leads</h3><p>Collects name, email and phone when visitors need a human.</p></div>
+      <div class="card"><h3>Any language</h3><p>Replies in the visitor's language automatically.</p></div>
+      <div class="card"><h3>Multiple bots</h3><p>One bot per site, brand or department.</p></div>
+      <div class="card"><h3>White-label for agencies</h3><p>Your logo, your brand — resell to your clients.</p></div>
+    </section>
+
+    <section class="section" id="pricing">
+      <div class="section-head">
+        <h2>Simple pricing, no surprises</h2>
+        <p>Start free. Pay per chat with credits, or pick a monthly plan with a bundle of chats included.</p>
+      </div>
+
+      <div class="toggle">
+        <button id="btn-monthly" class="active" onclick="setBilling('monthly')">Monthly</button>
+        <button id="btn-yearly" onclick="setBilling('yearly')">Yearly</button>
+        <span class="save">save up to 13%</span>
+      </div>
+
+      <div class="plans">
+        <div class="plan free">
+          <h3>Free</h3>
+          <div class="price"><span data-m="$0" data-y="$0">$0</span><small>/mo</small></div>
+          <div class="yearly-note">&nbsp;</div>
+          <ul>
+            <li>25 bonus credits on sign-up</li>
+            <li>1 bot, website-only training</li>
+            <li>Pay per chat with credits from $2</li>
+            <li>Lead capture &amp; email alerts</li>
+          </ul>
+          <a class="btn" href="https://app.botfolks.in/signup">Start free</a>
+        </div>
+
+        <div class="plan">
+          <h3>Starter</h3>
+          <div class="price"><span data-m="$19" data-y="$16.58">$19</span><small>/mo</small></div>
+          <div class="yearly-note" data-yearly-text="$199/year — save 13% ($29)">&nbsp;</div>
+          <ul>
+            <li>2,000 chats / month included</li>
+            <li>1 bot</li>
+            <li>Website, files, text &amp; Q&amp;A training</li>
+            <li>No "Powered by" badge, CSV export</li>
+          </ul>
+          <a class="btn" href="https://app.botfolks.in/signup">Choose Starter</a>
+        </div>
+
+        <div class="plan popular">
+          <span class="badge">Most popular</span>
+          <h3>Growth</h3>
+          <div class="price"><span data-m="$49" data-y="$44.08">$49</span><small>/mo</small></div>
+          <div class="yearly-note" data-yearly-text="$529/year — save 10% ($59)">&nbsp;</div>
+          <ul>
+            <li>5,500 chats / month included</li>
+            <li>3 bots</li>
+            <li>Everything in Starter</li>
+            <li>Integrations, advanced model</li>
+          </ul>
+          <a class="btn" href="https://app.botfolks.in/signup">Choose Growth</a>
+        </div>
+
+        <div class="plan">
+          <h3>Agency</h3>
+          <div class="price"><span data-m="$149" data-y="$133.25">$149</span><small>/mo</small></div>
+          <div class="yearly-note" data-yearly-text="$1,599/year — save 11% ($189)">&nbsp;</div>
+          <ul>
+            <li>18,000 chats / month included</li>
+            <li>15 bots</li>
+            <li>Everything in Growth</li>
+            <li>White-label, custom domain</li>
+          </ul>
+          <a class="btn" href="https://app.botfolks.in/signup">Choose Agency</a>
+        </div>
+      </div>
+      <p class="fineprint">Extra chats beyond your plan: $0.008 each, with a monthly cap you set. Credit packs: $2 = 130 · $5 = 500 · $10 = 1,100 · $25 = 3,000 (1 credit = $0.01).</p>
+    </section>
+
+    <section class="section">
+      <div class="section-head">
+        <h2>Why Botfolks costs less</h2>
+        <p>Most chatbot tools charge a flat monthly fee for a small bucket of AI replies. Botfolks plans are sized for real support volume.</p>
+      </div>
+      <div class="compare">
+        <div class="vs-card">
+          <div class="who">Tidio</div>
+          <div class="big">~$39/mo</div>
+          <div class="sub">for about 50 AI chats<br>≈ $0.78 per chat</div>
+        </div>
+        <div class="vs-x">vs</div>
+        <div class="vs-card us">
+          <div class="who">Botfolks Starter</div>
+          <div class="big">$19/mo</div>
+          <div class="sub">for 2,000 AI chats<br>≈ $0.01 per chat</div>
+        </div>
+      </div>
+      <p class="takeaway">That's <b>40× the monthly chats</b>, for <b>under half the price</b> — about 80× cheaper per chat.</p>
+      <p class="fineprint">Tidio pricing as listed publicly at the time of writing; check current pricing before relying on this comparison.</p>
+    </section>
+
+    <footer>© Botfolks · <a href="mailto:hello@botfolks.in" style="color:inherit">hello@botfolks.in</a></footer>
+  </div>
+
+  <script>
+    function setBilling(mode) {
+      document.getElementById('btn-monthly').classList.toggle('active', mode === 'monthly');
+      document.getElementById('btn-yearly').classList.toggle('active', mode === 'yearly');
+      document.querySelectorAll('.plan .price span').forEach((el) => {
+        el.textContent = mode === 'yearly' ? el.dataset.y : el.dataset.m;
+      });
+      document.querySelectorAll('.plan .price small').forEach((el) => {
+        el.textContent = '/mo';
+      });
+      document.querySelectorAll('.yearly-note').forEach((el) => {
+        el.textContent = mode === 'yearly' ? (el.dataset.yearlyText ?? '') : ' ';
+      });
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,8 @@
+{
+  "name": "@botfolks/site",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": { "dev": "vite --port 5175", "build": "vite build" },
+  "devDependencies": { "vite": "^5.4.9" }
+}
