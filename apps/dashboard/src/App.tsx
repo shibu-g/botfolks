@@ -12,6 +12,9 @@ import Dashboard from './pages/Dashboard';
 import Bots from './pages/Bots';
 import BotWizard from './pages/BotWizard';
 import BotDetail from './pages/BotDetail';
+import Conversations from './pages/Conversations';
+import ConversationDetail from './pages/ConversationDetail';
+import Leads from './pages/Leads';
 import Billing from './pages/Billing';
 import Profile from './pages/Profile';
 import Settings from './pages/Settings';
@@ -56,6 +59,9 @@ export default function App() {
             <Route path="/bots/new" element={<BotWizard />} />
             <Route path="/bots/:id/edit" element={<BotWizard />} />
             <Route path="/bots/:id" element={<BotDetail />} />
+            <Route path="/conversations" element={<Conversations />} />
+            <Route path="/conversations/:id" element={<ConversationDetail />} />
+            <Route path="/leads" element={<Leads />} />
             <Route path="/billing" element={<Billing />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/settings" element={<Settings />} />

@@ -12,8 +12,8 @@ const GROUPS: { label: string; items: NavEntry[] }[] = [
     items: [
       { kind: 'link', to: '/', end: true, label: 'Dashboard', icon: LayoutDashboard },
       { kind: 'link', to: '/bots', end: false, label: 'Bots', icon: Bot },
-      { kind: 'soon', label: 'Conversations', icon: MessageSquare },
-      { kind: 'soon', label: 'Leads', icon: Users },
+      { kind: 'link', to: '/conversations', end: false, label: 'Conversations', icon: MessageSquare },
+      { kind: 'link', to: '/leads', end: false, label: 'Leads', icon: Users },
     ],
   },
   {

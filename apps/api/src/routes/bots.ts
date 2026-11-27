@@ -4,7 +4,7 @@ import type { ResultSetHeader, RowDataPacket } from 'mysql2';
 import { createBotSchema, PLANS, VOICE_ENABLED_PLANS, type PlanId } from '@botfolks/shared';
 import { db } from '../lib/db.js';
 import { VEC_SQL, vecParam } from '../lib/vector.js';
-import { publicKey } from '../lib/ids.js';
+import { publicKey, encodeBotId, decodeBotId } from '../lib/ids.js';
 import { trainQueue } from '../lib/queue.js';
 import { requireAuth } from '../middleware/auth.js';
 import { embed } from '../services/openrouter.js';
@@ -18,14 +18,19 @@ async function workspacePlan(workspaceId: number): Promise<PlanId> {
   return r[0].plan_id;
 }
 
-async function ownBot(botId: number, workspaceId: number) {
-  const [r] = await db.query<RowDataPacket[]>('SELECT * FROM bots WHERE id = ? AND workspace_id = ?', [botId, workspaceId]);
+// `code` is the short reversible id shown in dashboard URLs instead of the raw
+// auto-increment id — accepts that code (as sent back by the API) rather than
+// a numeric id.
+async function ownBot(code: string, workspaceId: number) {
+  const id = decodeBotId(code);
+  if (id == null) return undefined;
+  const [r] = await db.query<RowDataPacket[]>('SELECT * FROM bots WHERE id = ? AND workspace_id = ?', [id, workspaceId]);
   return r[0];
 }
 
 bots.get('/', async (req, res) => {
-  const [rows] = await db.query('SELECT * FROM bots WHERE workspace_id = ? ORDER BY id DESC', [req.user!.workspaceId]);
-  res.json(rows);
+  const [rows] = await db.query<RowDataPacket[]>('SELECT * FROM bots WHERE workspace_id = ? ORDER BY id DESC', [req.user!.workspaceId]);
+  res.json(rows.map((b) => ({ ...b, code: encodeBotId(b.id) })));
 });
 
 // Workspace-wide usage analytics for the dashboard landing page. Must be registered
@@ -80,6 +85,64 @@ bots.get('/analytics', async (req, res) => {
   });
 });
 
+// Workspace-wide leads/conversations lists for the Leads/Conversations pages.
+// Must be registered before GET /:id, or Express would try to look up a bot
+// with id "leads" / "conversations".
+// ?bot= is the short bot code from the dashboard's filter dropdown, same as the
+// :id path param elsewhere — decode it to the numeric id the SQL needs. An
+// invalid code resolves to an impossible id (-1) so the filter yields zero
+// rows instead of silently falling back to "all bots".
+function botIdFilter(req: import('express').Request): number | null {
+  const code = req.query.bot;
+  if (!code || typeof code !== 'string') return null;
+  return decodeBotId(code) ?? -1;
+}
+
+bots.get('/leads', async (req, res) => {
+  const ws = req.user!.workspaceId;
+  const botId = botIdFilter(req);
+  const [rows] = await db.query<RowDataPacket[]>(
+    `SELECT l.*, b.name AS bot_name FROM leads l JOIN bots b ON b.id = l.bot_id
+     WHERE b.workspace_id = ? ${botId ? 'AND l.bot_id = ?' : ''}
+     ORDER BY l.id DESC LIMIT 500`,
+    botId ? [ws, botId] : [ws],
+  );
+  res.json(rows.map((l) => ({ ...l, bot_code: encodeBotId(l.bot_id) })));
+});
+
+bots.get('/conversations', async (req, res) => {
+  const ws = req.user!.workspaceId;
+  const botId = botIdFilter(req);
+  const [rows] = await db.query<RowDataPacket[]>(
+    `SELECT c.*, b.name AS bot_name,
+       (SELECT content FROM messages m WHERE m.conversation_id = c.id ORDER BY m.id DESC LIMIT 1) AS last_message,
+       (SELECT COUNT(*) FROM messages m WHERE m.conversation_id = c.id) AS message_count
+     FROM conversations c JOIN bots b ON b.id = c.bot_id
+     WHERE b.workspace_id = ? ${botId ? 'AND c.bot_id = ?' : ''}
+     ORDER BY c.id DESC LIMIT 200`,
+    botId ? [ws, botId] : [ws],
+  );
+  res.json(rows.map((c) => ({ ...c, bot_code: encodeBotId(c.bot_id) })));
+});
+
+// Single conversation + its full message thread. Two path segments, so it
+// never collides with the single-segment /:id bot route above.
+bots.get('/conversations/:convId', async (req, res) => {
+  const ws = req.user!.workspaceId;
+  const [rows] = await db.query<RowDataPacket[]>(
+    `SELECT c.*, b.name AS bot_name FROM conversations c JOIN bots b ON b.id = c.bot_id
+     WHERE c.id = ? AND b.workspace_id = ?`,
+    [req.params.convId, ws],
+  );
+  const conversation = rows[0];
+  if (!conversation) return res.sendStatus(404);
+  const [messages] = await db.query(
+    'SELECT * FROM messages WHERE conversation_id = ? ORDER BY id ASC',
+    [conversation.id],
+  );
+  res.json({ conversation: { ...conversation, bot_code: encodeBotId(conversation.bot_id) }, messages });
+});
+
 bots.post('/', async (req, res, next) => {
   try {
     const input = createBotSchema.parse(req.body);
@@ -97,20 +160,20 @@ bots.post('/', async (req, res, next) => {
       await db.query(`UPDATE bots SET status = 'training' WHERE id = ?`, [b.insertId]);
       await trainQueue.add('train', { botId: b.insertId, sourceId: s.insertId });
     }
-    res.status(201).json({ id: b.insertId });
+    res.status(201).json({ id: b.insertId, code: encodeBotId(b.insertId) });
   } catch (e) { next(e); }
 });
 
 bots.get('/:id', async (req, res) => {
-  const bot = await ownBot(Number(req.params.id), req.user!.workspaceId);
+  const bot = await ownBot(req.params.id, req.user!.workspaceId);
   if (!bot) return res.sendStatus(404);
   const [rows] = await db.query<RowDataPacket[]>('SELECT * FROM sources WHERE bot_id = ?', [bot.id]);
   const sources = rows.map((s) => ({ ...s, meta_json: typeof s.meta_json === 'string' ? JSON.parse(s.meta_json) : s.meta_json }));
-  res.json({ ...bot, sources });
+  res.json({ ...bot, code: encodeBotId(bot.id), sources });
 });
 
 bots.patch('/:id', async (req, res) => {
-  const bot = await ownBot(Number(req.params.id), req.user!.workspaceId);
+  const bot = await ownBot(req.params.id, req.user!.workspaceId);
   if (!bot) return res.sendStatus(404);
   const { name, systemPrompt, welcomeMessage, theme, languages, leadCapture, allowedDomains, voiceEnabled, isLive } = req.body;
 
@@ -138,7 +201,7 @@ bots.patch('/:id', async (req, res) => {
 
 // Add a URL / sitemap source
 bots.post('/:id/sources/url', async (req, res) => {
-  const bot = await ownBot(Number(req.params.id), req.user!.workspaceId);
+  const bot = await ownBot(req.params.id, req.user!.workspaceId);
   if (!bot) return res.sendStatus(404);
   const [s] = await db.query<ResultSetHeader>(`INSERT INTO sources (bot_id, type, ref) VALUES (?, ?, ?)`,
     [bot.id, req.body.sitemap ? 'sitemap' : 'url', req.body.url]);
@@ -149,7 +212,7 @@ bots.post('/:id/sources/url', async (req, res) => {
 // Upload PDF/DOCX/TXT (paid plans only)
 bots.post('/:id/sources/file', upload.single('file'), async (req, res) => {
   const ws = req.user!.workspaceId;
-  const bot = await ownBot(Number(req.params.id), ws);
+  const bot = await ownBot(req.params.id, ws);
   if (!bot || !req.file) return res.sendStatus(400);
   if (!PLANS[await workspacePlan(ws)].fileTraining) return res.status(403).json({ error: 'File training is available on paid plans.' });
   const [s] = await db.query<ResultSetHeader>(`INSERT INTO sources (bot_id, type, ref, meta_json) VALUES (?, 'file', ?, ?)`,
@@ -160,7 +223,7 @@ bots.post('/:id/sources/file', upload.single('file'), async (req, res) => {
 
 // Q&A pairs (highest priority answers)
 bots.post('/:id/qa', async (req, res) => {
-  const bot = await ownBot(Number(req.params.id), req.user!.workspaceId);
+  const bot = await ownBot(req.params.id, req.user!.workspaceId);
   if (!bot) return res.sendStatus(404);
   const { question, answer } = req.body as { question: string; answer: string };
   const [v] = await embed([question]);
@@ -170,14 +233,14 @@ bots.post('/:id/qa', async (req, res) => {
 });
 
 bots.get('/:id/leads', async (req, res) => {
-  const bot = await ownBot(Number(req.params.id), req.user!.workspaceId);
+  const bot = await ownBot(req.params.id, req.user!.workspaceId);
   if (!bot) return res.sendStatus(404);
   const [rows] = await db.query('SELECT * FROM leads WHERE bot_id = ? ORDER BY id DESC LIMIT 500', [bot.id]);
   res.json(rows);
 });
 
 bots.get('/:id/conversations', async (req, res) => {
-  const bot = await ownBot(Number(req.params.id), req.user!.workspaceId);
+  const bot = await ownBot(req.params.id, req.user!.workspaceId);
   if (!bot) return res.sendStatus(404);
   const [rows] = await db.query('SELECT * FROM conversations WHERE bot_id = ? ORDER BY id DESC LIMIT 200', [bot.id]);
   res.json(rows);

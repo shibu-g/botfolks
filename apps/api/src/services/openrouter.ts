@@ -54,6 +54,11 @@ export async function chatStream(
       max_tokens: 600,
       temperature: 0.3,
       usage: { include: true },
+      // Some free models default to emitting long chain-of-thought in `reasoning`
+      // before any real `content` — with a capped max_tokens that can eat the whole
+      // budget and leave the actual reply empty. We only ever read `delta.content`,
+      // so turn reasoning off rather than silently losing replies.
+      reasoning: { enabled: false },
     }),
   });
   if (!r.ok || !r.body) throw new Error(`Chat failed: ${r.status}`);

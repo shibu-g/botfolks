@@ -11,6 +11,7 @@ const API_URL = import.meta.env.VITE_API_URL ?? 'https://api.botfolks.in';
 
 export interface BotListItem {
   id: number;
+  code: string;
   name: string;
   status: string;
   public_key: string;
@@ -59,7 +60,7 @@ export function BotCard({ bot }: { bot: BotListItem }) {
           >
             <Link
               role="menuitem"
-              to={`/bots/${bot.id}/edit`}
+              to={`/bots/${bot.code}/edit`}
               onClick={() => setMenuOpen(false)}
               className="flex w-full items-center gap-2.5 bg-transparent px-3 py-2 text-left text-[13.5px] text-text hover:bg-white/[.06]"
             >
@@ -84,7 +85,7 @@ export function BotCard({ bot }: { bot: BotListItem }) {
         )}
       </div>
 
-      <Link to={`/bots/${bot.id}`} className="flex h-full flex-col">
+      <Link to={`/bots/${bot.code}`} className="flex h-full flex-col">
         <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md bg-[image:var(--accent-grad)] text-[16px] font-bold text-white">
           {bot.name.slice(0, 1).toUpperCase() || <BotIcon size={18} />}
         </span>

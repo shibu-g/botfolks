@@ -191,7 +191,7 @@ export default function BotWizard() {
     setSubmitting(true);
     try {
       const systemPrompt = instructions.trim() || selectedType.systemPrompt || undefined;
-      const { id: newId } = await post<{ id: number }>('/bots', {
+      const { code: newCode } = await post<{ id: number; code: string }>('/bots', {
         name: name.trim(),
         websiteUrl: websiteUrl.trim() || undefined,
         languages: [language],
@@ -199,14 +199,14 @@ export default function BotWizard() {
       });
       if (color !== DEFAULT_COLOR) {
         try {
-          await patch(`/bots/${newId}`, { theme: { primaryColor: color } });
+          await patch(`/bots/${newCode}`, { theme: { primaryColor: color } });
         } catch {
           // Theme is a nice-to-have — don't block bot creation on it.
         }
       }
       qc.invalidateQueries({ queryKey: ['bots'] });
       show(websiteUrl ? 'Bot created — training started.' : 'Bot created.');
-      navigate(`/bots/${newId}`);
+      navigate(`/bots/${newCode}`);
     } catch (e: any) {
       setSubmitError(e.message);
     } finally {
