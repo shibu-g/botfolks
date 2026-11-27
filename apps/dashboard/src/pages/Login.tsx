@@ -11,6 +11,7 @@ export default function Login() {
   const [err, setErr] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPw, setShowPw] = useState(false);
+  const justPaid = new URLSearchParams(window.location.search).get('checkout') === 'success';
 
   async function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -24,7 +25,9 @@ export default function Login() {
       const me = await api('/auth/me');
       qc.setQueryData(['me'], me);
     } catch (x: any) {
-      setErr(x.message);
+      setErr(justPaid && /wrong email or password/i.test(x.message)
+        ? "We're still finalizing your account from the payment — wait a few seconds and try again."
+        : x.message);
       setLoading(false);
     }
   }
@@ -40,6 +43,13 @@ export default function Login() {
         <div className="auth-logo"><Logo size={38} /></div>
         <h1>Welcome back</h1>
         <p className="auth-sub">Log in to manage your bots and conversations.</p>
+
+        {justPaid && (
+          <div className="auth-perk">
+            <Icon size={15}><path d="m4 12 5 5L20 6" /></Icon>
+            Payment received! Log in with the email &amp; password you just created to get started.
+          </div>
+        )}
 
         <form onSubmit={submit}>
           <div className="field">

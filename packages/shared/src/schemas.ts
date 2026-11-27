@@ -37,6 +37,13 @@ export const checkoutSchema = z.object({
   planId: z.enum(['starter', 'growth', 'agency']),
 });
 
+export const publicCheckoutSchema = z.object({
+  name: z.string().min(1).max(120),
+  email: z.string().email(),
+  password: z.string().min(8),
+  planId: z.enum(['starter', 'growth', 'agency']),
+});
+
 export const voiceSessionSchema = z.object({
   botKey: z.string().length(24),
   visitorId: z.string().uuid(),
@@ -61,6 +68,7 @@ export type CreateBotInput = z.infer<typeof createBotSchema>;
 export type ChatMessageInput = z.infer<typeof chatMessageSchema>;
 export type LeadInput = z.infer<typeof leadSchema>;
 export type CheckoutInput = z.infer<typeof checkoutSchema>;
+export type PublicCheckoutInput = z.infer<typeof publicCheckoutSchema>;
 export type VoiceSessionInput = z.infer<typeof voiceSessionSchema>;
 export type VoiceSessionEndInput = z.infer<typeof voiceSessionEndSchema>;
 export type VoiceToolInput = z.infer<typeof voiceToolSchema>;

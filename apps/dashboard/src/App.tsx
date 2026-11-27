@@ -6,6 +6,7 @@ import AppLayout from './components/layout/AppLayout';
 import { LogoutOverlay } from './components/layout/LogoutOverlay';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
+import BuyNow from './pages/BuyNow';
 import Landing from './pages/Landing';
 import Dashboard from './pages/Dashboard';
 import Bots from './pages/Bots';
@@ -47,6 +48,7 @@ export default function App() {
       <Routes>
         <Route path="/login" element={authed ? <Navigate to={from} replace /> : <Login />} />
         <Route path="/signup" element={authed ? <Navigate to={from} replace /> : <Signup />} />
+        <Route path="/buy/:planId" element={authed ? <Navigate to="/billing" replace /> : <BuyNow />} />
         {authed ? (
           <Route element={<AppLayout me={me.data} />}>
             <Route path="/" element={<Dashboard />} />

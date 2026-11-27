@@ -2,6 +2,7 @@ import { useEffect, useState, type MouseEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '../lib/api';
+import { VOICE_ENABLED_PLANS, FREE_BONUS_CREDITS, type PlanId } from '@botfolks/shared';
 import { Icon } from '../components/Icon';
 import { Logo } from '../components/Logo';
 
@@ -347,11 +348,17 @@ export default function Landing() {
                 <div className="price">${p.monthly}<small>/mo</small></div>
                 {p.monthly > 0 && <div className="muted small">or ${p.yearly}/year</div>}
                 <ul>
-                  {id === 'free'
-                    ? <><li>🎁 25 bonus credits on sign-up</li><li>🤖 1 bot, website-only training</li><li>💳 Pay per chat with credits from $2</li></>
-                    : <><li>💬 {p.chats.toLocaleString()} chats / month</li><li>🤖 {p.bots} bot{p.bots > 1 ? 's' : ''}</li><li>📚 Website, files, text &amp; Q&amp;A training</li>{p.whiteLabel && <li>🏷️ White-label</li>}</>}
+                  {id === 'free' && <li>🎁 {FREE_BONUS_CREDITS} bonus credits to try it out</li>}
+                  <li>{p.chats > 0 ? `💬 ${p.chats.toLocaleString()} AI chats every month` : '💳 Pay only for what you use, from $2'}</li>
+                  <li>🤖 Run up to {p.bots} chatbot{p.bots > 1 ? 's' : ''}</li>
+                  <li className={p.fileTraining ? '' : 'off'}>📚 Trained on your website, documents &amp; files</li>
+                  <li className={p.leadCapture ? '' : 'off'}>🎯 Capture visitor leads automatically</li>
+                  <li className={p.alwaysOnline ? '' : 'off'}>🌙 Answers customers 24/7, instantly</li>
+                  <li className={p.customColor ? '' : 'off'}>🎨 Customized widget colors to match your brand</li>
+                  <li className={VOICE_ENABLED_PLANS.includes(id as PlanId) ? '' : 'off'}>🎙️ Voice chat support</li>
+                  <li className={p.whiteLabel ? '' : 'off'}>🏷️ White-label — your own name &amp; branding, shown to your customers</li>
                 </ul>
-                <Link className="btn" to="/signup">{id === 'free' ? '✨ Start free' : '🚀 Buy now'}</Link>
+                <Link className="btn" to={id === 'free' ? '/signup' : `/buy/${id}`}>{id === 'free' ? '✨ Start free' : '🚀 Buy now'}</Link>
               </div>
             ))}
             <div className="card plan">

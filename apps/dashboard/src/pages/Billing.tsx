@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useOutletContext } from 'react-router-dom';
-import { CheckCircle2, AlertCircle, Zap, Check, Receipt } from 'lucide-react';
-import { CREDIT_USD, FREE_BONUS_CREDITS, type PlanId } from '@botfolks/shared';
+import { CheckCircle2, AlertCircle, Zap, Check, X, Receipt } from 'lucide-react';
+import { CREDIT_USD, FREE_BONUS_CREDITS, VOICE_ENABLED_PLANS, type PlanId } from '@botfolks/shared';
 import { api, post } from '../lib/api';
 import { Button } from '../components/ui/Button';
 import { EmptyState } from '../components/ui/EmptyState';
@@ -42,6 +42,19 @@ export default function Billing() {
   const planEntries = Object.entries(plans) as [PlanId, (typeof plans)[PlanId]][];
   const currentPlan = plans[me.plan];
   const creditPct = me.plan === 'free' ? Math.min(100, Math.round((me.credits / FREE_BONUS_CREDITS) * 100)) : null;
+
+  function featureRows(id: PlanId, p: (typeof plans)[PlanId]) {
+    return [
+      { included: true, label: p.chats > 0 ? `${p.chats.toLocaleString()} AI chats every month` : 'Pay-as-you-go with credits' },
+      { included: true, label: `Run up to ${p.bots} chatbot${p.bots > 1 ? 's' : ''}` },
+      { included: p.fileTraining, label: 'Trained on your website, documents & files' },
+      { included: p.leadCapture, label: 'Capture visitor leads automatically' },
+      { included: p.alwaysOnline, label: 'Answers customers 24/7, instantly' },
+      { included: p.customColor, label: 'Customized widget colors to match your brand' },
+      { included: VOICE_ENABLED_PLANS.includes(id), label: 'Voice chat support' },
+      { included: p.whiteLabel, label: 'White-label — your own name & branding, shown to your customers' },
+    ];
+  }
 
   return (
     <>
@@ -115,11 +128,17 @@ export default function Billing() {
                 {formatMoney(p.monthly)}<small className="text-[14px] font-semibold text-muted">/mo</small>
               </div>
               <div className="mt-1 whitespace-nowrap text-[13px] text-muted">or {formatMoney(p.yearly)}/year</div>
-              <ul className="my-5 flex flex-1 flex-col gap-2.5 text-[14px] text-text">
-                <li className="flex items-center gap-2"><Check size={14} className="shrink-0 text-ok" />{p.chats > 0 ? `${p.chats.toLocaleString()} chats / month` : 'Credit-based usage'}</li>
-                <li className="flex items-center gap-2"><Check size={14} className="shrink-0 text-ok" />{p.bots} bot{p.bots > 1 ? 's' : ''}</li>
-                <li className="flex items-center gap-2"><Check size={14} className="shrink-0 text-ok" />Website + file training</li>
-                {p.whiteLabel && <li className="flex items-center gap-2"><Check size={14} className="shrink-0 text-ok" />White-label</li>}
+              <ul className="my-5 flex flex-1 flex-col gap-3">
+                {featureRows(id, p).map((f, i) => (
+                  <li key={i} className={`flex items-start gap-2.5 text-[15px] leading-snug ${f.included ? 'text-text' : 'text-muted/60'}`}>
+                    {f.included ? (
+                      <Check size={17} strokeWidth={2.75} className="mt-0.5 shrink-0 text-ok" />
+                    ) : (
+                      <X size={17} strokeWidth={2.75} className="mt-0.5 shrink-0 text-muted/40" />
+                    )}
+                    <span className={f.included ? 'font-medium' : 'line-through'}>{f.label}</span>
+                  </li>
+                ))}
               </ul>
               {id === 'free' ? (
                 <Button variant="outline" disabled className="w-full">{isCurrent ? 'Current plan' : 'Included'}</Button>
