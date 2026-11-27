@@ -15,5 +15,15 @@ export async function api<T = any>(path: string, init: RequestInit = {}): Promis
 export const post = <T = any>(path: string, body: unknown) =>
   api<T>(path, { method: 'POST', body: body instanceof FormData ? body : JSON.stringify(body) });
 
+export async function getBlob(path: string): Promise<{ blob: Blob; filename: string | null }> {
+  const r = await fetch(`${BASE}/v1${path}`, { credentials: 'include' });
+  if (!r.ok) {
+    const data = await r.json().catch(() => ({}));
+    throw new Error(data.error ?? `Request failed (${r.status})`);
+  }
+  const match = r.headers.get('content-disposition')?.match(/filename="(.+?)"/);
+  return { blob: await r.blob(), filename: match?.[1] ?? null };
+}
+
 export const patch = <T = any>(path: string, body: unknown) =>
   api<T>(path, { method: 'PATCH', body: JSON.stringify(body) });

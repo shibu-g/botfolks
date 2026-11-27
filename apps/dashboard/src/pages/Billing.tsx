@@ -1,20 +1,50 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useOutletContext } from 'react-router-dom';
-import { CheckCircle2, AlertCircle, Zap, Check, X, Receipt } from 'lucide-react';
+import { CheckCircle2, AlertCircle, Zap, Check, X, Receipt, Download } from 'lucide-react';
 import { CREDIT_USD, FREE_BONUS_CREDITS, VOICE_ENABLED_PLANS, type PlanId } from '@botfolks/shared';
-import { api, post } from '../lib/api';
+import { api, post, getBlob } from '../lib/api';
 import { Button } from '../components/ui/Button';
 import { EmptyState } from '../components/ui/EmptyState';
-import { formatMoney } from '../lib/format';
+import { formatMoney, formatDate, formatCurrency } from '../lib/format';
 import type { Me } from '../lib/types';
+
+interface Invoice {
+  id: string;
+  date: string;
+  description: string;
+  amount: number;
+  currency: string;
+  status: string | null;
+}
 
 export default function Billing() {
   const { me } = useOutletContext<{ me: Me }>();
   const q = useQuery({ queryKey: ['plans'], queryFn: () => api('/billing/plans') });
+  const invoicesQ = useQuery({ queryKey: ['invoices'], queryFn: () => api<{ invoices: Invoice[] }>('/billing/invoices') });
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
+  const [loadingPack, setLoadingPack] = useState<string | null>(null);
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [err, setErr] = useState('');
   const justPaid = new URLSearchParams(window.location.search).get('checkout') === 'success';
+
+  async function downloadInvoice(id: string) {
+    setErr('');
+    setDownloadingId(id);
+    try {
+      const { blob, filename } = await getBlob(`/billing/invoices/${id}/download`);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename ?? `invoice-${id}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (e: any) {
+      setErr(e.message);
+    } finally {
+      setDownloadingId(null);
+    }
+  }
 
   async function buyNow(planId: string) {
     setErr('');
@@ -25,6 +55,18 @@ export default function Billing() {
     } catch (e: any) {
       setErr(e.message);
       setLoadingPlan(null);
+    }
+  }
+
+  async function buyCredits(packId: string) {
+    setErr('');
+    setLoadingPack(packId);
+    try {
+      const { url } = await post<{ url: string }>('/billing/checkout-credits', { packId });
+      window.location.href = url;
+    } catch (e: any) {
+      setErr(e.message);
+      setLoadingPack(null);
     }
   }
 
@@ -159,20 +201,72 @@ export default function Billing() {
       </div>
 
       {/* Credit packs */}
-      <h2 className="mb-5 text-[22px] font-semibold text-text">Credit packs (Free plan)</h2>
+      <h2 className="mb-5 text-[22px] font-semibold text-text">Credit packs</h2>
       <div className="mb-12 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 lg:gap-6">
         {packs.map((p: any) => (
           <div key={p.id} className="rounded-lg border border-line bg-surface p-5 sm:p-6">
             <div className="text-[22px] font-bold tabular-nums text-text">{formatMoney(p.usd)}</div>
             <div className="mt-1 text-[14px] text-muted">{p.credits.toLocaleString()} credits</div>
-            <Button variant="outline" disabled title="Coming soon" className="mt-4 w-full">Buy</Button>
+            <Button
+              variant="outline"
+              loading={loadingPack === p.id}
+              onClick={() => buyCredits(p.id)}
+              className="mt-4 w-full"
+            >
+              {loadingPack === p.id ? 'Redirecting…' : 'Buy'}
+            </Button>
           </div>
         ))}
       </div>
 
       {/* Invoice history */}
       <h2 className="mb-5 text-[22px] font-semibold text-text">Invoice history</h2>
-      <EmptyState icon={<Receipt size={22} />} title="No invoices yet" description="Your past invoices will show up here once you're on a paid plan." />
+      {!invoicesQ.data ? (
+        <div className="h-40 animate-pulse-soft rounded-lg border border-line bg-surface" />
+      ) : invoicesQ.data.invoices.length === 0 ? (
+        <EmptyState icon={<Receipt size={22} />} title="No invoices yet" description="Your past invoices will show up here once you're on a paid plan." />
+      ) : (
+        <div className="overflow-hidden rounded-lg border border-line bg-surface">
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[560px] text-left text-[14px]">
+              <thead>
+                <tr className="border-b border-line text-[13px] text-muted">
+                  <th className="px-5 py-3 font-medium">Date</th>
+                  <th className="px-5 py-3 font-medium">Description</th>
+                  <th className="px-5 py-3 font-medium">Amount</th>
+                  <th className="px-5 py-3 font-medium">Status</th>
+                  <th className="px-5 py-3 font-medium text-right">Receipt</th>
+                </tr>
+              </thead>
+              <tbody>
+                {invoicesQ.data.invoices.map((inv) => (
+                  <tr key={inv.id} className="border-b border-line last:border-0">
+                    <td className="whitespace-nowrap px-5 py-3 text-muted">{formatDate(inv.date)}</td>
+                    <td className="px-5 py-3 text-text">{inv.description}</td>
+                    <td className="whitespace-nowrap px-5 py-3 text-text">{formatCurrency(inv.amount / 100, inv.currency)}</td>
+                    <td className="px-5 py-3">
+                      <span className={`whitespace-nowrap rounded-full border px-2 py-0.5 text-[13px] font-medium ${inv.status === 'succeeded' ? 'border-ok/30 text-ok' : 'border-line text-muted'}`}>
+                        {inv.status ?? 'unknown'}
+                      </span>
+                    </td>
+                    <td className="px-5 py-3 text-right">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        icon={<Download size={14} />}
+                        loading={downloadingId === inv.id}
+                        onClick={() => downloadInvoice(inv.id)}
+                      >
+                        Download
+                      </Button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
     </>
   );
 }

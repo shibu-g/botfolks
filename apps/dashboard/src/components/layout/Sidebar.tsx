@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, Bot, CreditCard, Settings, MessageSquare, Users, Sparkles } from 'lucide-react';
+import { LayoutDashboard, Bot, Settings, MessageSquare, Users, Sparkles } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
 type NavEntry =
@@ -18,10 +18,7 @@ const GROUPS: { label: string; items: NavEntry[] }[] = [
   },
   {
     label: 'Account',
-    items: [
-      { kind: 'link', to: '/billing', end: false, label: 'Billing & plans', icon: CreditCard },
-      { kind: 'link', to: '/settings', end: false, label: 'Settings', icon: Settings },
-    ],
+    items: [{ kind: 'link', to: '/settings', end: false, label: 'Settings', icon: Settings }],
   },
 ];
 

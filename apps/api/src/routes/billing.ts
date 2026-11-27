@@ -3,7 +3,7 @@ import { Router } from 'express';
 import bcrypt from 'bcryptjs';
 import rateLimit from 'express-rate-limit';
 import type { ResultSetHeader, RowDataPacket } from 'mysql2';
-import { CREDIT_PACKS, FREE_BONUS_CREDITS, PLANS, checkoutSchema, publicCheckoutSchema, type PlanId } from '@botfolks/shared';
+import { CREDIT_PACKS, FREE_BONUS_CREDITS, PLANS, checkoutSchema, publicCheckoutSchema, creditCheckoutSchema, type PlanId } from '@botfolks/shared';
 import { requireAuth } from '../middleware/auth.js';
 import { config } from '../config.js';
 import { dodo, dodoWebhook } from '../lib/dodo.js';
@@ -18,6 +18,74 @@ const DODO_PRODUCTS: Record<'starter' | 'growth' | 'agency', string> = {
   growth: config.dodo.products.growth,
   agency: config.dodo.products.agency,
 };
+
+const DODO_CREDIT_PACK_PRODUCTS: Record<string, string> = config.dodo.creditPacks;
+
+billing.get('/invoices', requireAuth, async (req, res, next) => {
+  try {
+    const [rows] = await db.query<RowDataPacket[]>('SELECT email FROM users WHERE id = ?', [req.user!.userId]);
+    const user = rows[0];
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    const customers = await dodo.customers.list({ email: user.email });
+    const customerId = customers.items[0]?.customer_id;
+    if (!customerId) return res.json({ invoices: [] });
+
+    const payments = await dodo.payments.list({ customer_id: customerId, status: 'succeeded', page_size: 50 });
+
+    const invoices = await Promise.all(
+      payments.items.map(async (p) => {
+        let description = 'Payment';
+        const packId = p.metadata?.packId as string | undefined;
+        if (packId) {
+          const pack = CREDIT_PACKS.find((c) => c.id === packId);
+          description = pack ? `Credit pack — ${pack.credits.toLocaleString()} credits` : 'Credit pack';
+        } else if (p.subscription_id) {
+          const [subRows] = await db.query<RowDataPacket[]>('SELECT plan_id FROM subscriptions WHERE provider_sub_id = ?', [p.subscription_id]);
+          const planId = subRows[0]?.plan_id as PlanId | undefined;
+          description = planId ? `${PLANS[planId].name} plan — ${p.charge_type === 'renewal' ? 'renewal' : 'subscription'}` : 'Subscription';
+        }
+
+        return {
+          id: p.payment_id,
+          date: p.created_at,
+          description,
+          amount: p.total_amount,
+          currency: p.currency,
+          status: p.status,
+        };
+      }),
+    );
+
+    invoices.sort((a, b) => +new Date(b.date) - +new Date(a.date));
+    res.json({ invoices });
+  } catch (e: any) {
+    if (e?.status) return res.status(502).json({ error: 'Dodo Payments request failed', detail: e?.message });
+    next(e);
+  }
+});
+
+billing.get('/invoices/:paymentId/download', requireAuth, async (req, res, next) => {
+  try {
+    const [rows] = await db.query<RowDataPacket[]>('SELECT email FROM users WHERE id = ?', [req.user!.userId]);
+    const user = rows[0];
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    const payment = await dodo.payments.retrieve(req.params.paymentId);
+    if (payment.customer.email.toLowerCase() !== user.email.toLowerCase()) {
+      return res.status(403).json({ error: 'Not your invoice' });
+    }
+
+    const pdf = await dodo.invoices.payments.retrieve(req.params.paymentId);
+    const buf = Buffer.from(await pdf.arrayBuffer());
+    res.setHeader('Content-Type', pdf.headers.get('content-type') ?? 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="invoice-${req.params.paymentId}.pdf"`);
+    res.send(buf);
+  } catch (e: any) {
+    if (e?.status) return res.status(502).json({ error: 'Dodo Payments request failed', detail: e?.message });
+    next(e);
+  }
+});
 
 billing.post('/checkout', requireAuth, async (req, res, next) => {
   try {
@@ -41,6 +109,35 @@ billing.post('/checkout', requireAuth, async (req, res, next) => {
     res.json({ url: session.checkout_url });
   } catch (e: any) {
     if (e?.name === 'ZodError') return res.status(400).json({ error: 'Invalid plan' });
+    if (e?.status) return res.status(502).json({ error: 'Dodo Payments request failed', detail: e?.message });
+    next(e);
+  }
+});
+
+billing.post('/checkout-credits', requireAuth, async (req, res, next) => {
+  try {
+    const { packId } = creditCheckoutSchema.parse(req.body);
+    const pack = CREDIT_PACKS.find((p) => p.id === packId);
+    const productId = DODO_CREDIT_PACK_PRODUCTS[packId];
+    if (!pack || !productId) {
+      return res.status(400).json({
+        error: `Dodo product not configured for "${packId}" yet — create a one-time Product in the Dodo dashboard and set DODO_PRODUCT_${packId.toUpperCase()} in .env`,
+      });
+    }
+
+    const [rows] = await db.query<RowDataPacket[]>('SELECT email, name FROM users WHERE id = ?', [req.user!.userId]);
+    const user = rows[0];
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    const session = await dodo.checkoutSessions.create({
+      product_cart: [{ product_id: productId, quantity: 1 }],
+      customer: { email: user.email, name: user.name || user.email },
+      return_url: `${config.appUrl}/billing?checkout=success`,
+      metadata: { workspaceId: String(req.user!.workspaceId), packId },
+    });
+    res.json({ url: session.checkout_url });
+  } catch (e: any) {
+    if (e?.name === 'ZodError') return res.status(400).json({ error: 'Invalid credit pack' });
     if (e?.status) return res.status(502).json({ error: 'Dodo Payments request failed', detail: e?.message });
     next(e);
   }
@@ -142,6 +239,27 @@ billing.post('/webhook/dodo', async (req, res) => {
 
   try {
     const { type, data } = req.body as { type?: string; data?: any };
+
+    // One-time credit-pack purchase — top up the wallet, keyed off the pack id
+    // we stashed in metadata at checkout. `ref` doubles as an idempotency key
+    // so a Dodo webhook retry can't double-credit the same payment.
+    if (data?.payload_type === 'Payment' && type === 'payment.succeeded') {
+      const workspaceId = Number(data?.metadata?.workspaceId);
+      const pack = CREDIT_PACKS.find((p) => p.id === data?.metadata?.packId);
+      if (workspaceId && pack) {
+        const [existing] = await db.query<RowDataPacket[]>('SELECT id FROM credit_transactions WHERE ref = ? LIMIT 1', [data.payment_id]);
+        if (!existing[0]) {
+          await db.query('UPDATE credit_wallets SET balance = balance + ? WHERE workspace_id = ?', [pack.credits, workspaceId]);
+          await db.query(`INSERT INTO credit_transactions (workspace_id, delta, reason, ref) VALUES (?, ?, 'purchase', ?)`, [
+            workspaceId,
+            pack.credits,
+            data.payment_id,
+          ]);
+        }
+      }
+      return;
+    }
+
     if (data?.payload_type !== 'Subscription') return;
 
     const planId = (Object.keys(DODO_PRODUCTS) as PlanId[]).find((id) => DODO_PRODUCTS[id as keyof typeof DODO_PRODUCTS] === data.product_id);

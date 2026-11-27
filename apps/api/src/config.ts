@@ -28,6 +28,12 @@ export const config = {
       growth: process.env.DODO_PRODUCT_GROWTH ?? '',
       agency: process.env.DODO_PRODUCT_AGENCY ?? '',
     },
+    creditPacks: {
+      pack_2: process.env.DODO_PRODUCT_PACK_2 ?? '',
+      pack_5: process.env.DODO_PRODUCT_PACK_5 ?? '',
+      pack_10: process.env.DODO_PRODUCT_PACK_10 ?? '',
+      pack_25: process.env.DODO_PRODUCT_PACK_25 ?? '',
+    },
   },
   openrouter: {
     apiKey: process.env.OPENROUTER_API_KEY ?? '',

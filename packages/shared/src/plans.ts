@@ -5,21 +5,24 @@ export const CREDIT_USD = 0.01;           // 1 credit = $0.01
 export const FREE_BONUS_CREDITS = 25;
 export const OVERAGE_PER_CHAT_USD = 0.008;
 
+// Included-chat and credit-pack counts below are sized so net revenue (price,
+// minus 18% GST) clears 2.5x OVERAGE_PER_CHAT_USD at full usage — see the
+// 2026-11-27 margin audit. Re-derive rather than eyeball if price changes.
 export const PLANS: Record<PlanId, {
   name: string; monthly: number; yearly: number; chats: number; bots: number;
   fileTraining: boolean; whiteLabel: boolean; leadCapture: boolean; alwaysOnline: boolean; customColor: boolean;
 }> = {
-  free:    { name: 'Free',    monthly: 0,   yearly: 0,    chats: 0,     bots: 1,  fileTraining: false, whiteLabel: false, leadCapture: false, alwaysOnline: false, customColor: false },
-  starter: { name: 'Starter', monthly: 19,  yearly: 199,  chats: 2000,  bots: 5,  fileTraining: true,  whiteLabel: false, leadCapture: true,  alwaysOnline: true,  customColor: true },
-  growth:  { name: 'Growth',  monthly: 49,  yearly: 529,  chats: 5500,  bots: 10, fileTraining: true,  whiteLabel: false, leadCapture: true,  alwaysOnline: true,  customColor: true },
-  agency:  { name: 'Agency',  monthly: 149, yearly: 1599, chats: 18000, bots: 15, fileTraining: true,  whiteLabel: true,  leadCapture: true,  alwaysOnline: true,  customColor: true },
+  free:    { name: 'Free',    monthly: 0,   yearly: 0,    chats: 0,    bots: 1,  fileTraining: false, whiteLabel: false, leadCapture: false, alwaysOnline: false, customColor: false },
+  starter: { name: 'Starter', monthly: 19,  yearly: 199,  chats: 805,  bots: 5,  fileTraining: true,  whiteLabel: false, leadCapture: true,  alwaysOnline: true,  customColor: true },
+  growth:  { name: 'Growth',  monthly: 49,  yearly: 529,  chats: 2076, bots: 10, fileTraining: true,  whiteLabel: false, leadCapture: true,  alwaysOnline: true,  customColor: true },
+  agency:  { name: 'Agency',  monthly: 149, yearly: 1599, chats: 6314, bots: 15, fileTraining: true,  whiteLabel: true,  leadCapture: true,  alwaysOnline: true,  customColor: true },
 };
 
 export const CREDIT_PACKS = [
-  { id: 'pack_2',  usd: 2,  credits: 130 },
-  { id: 'pack_5',  usd: 5,  credits: 500 },
-  { id: 'pack_10', usd: 10, credits: 1100 },
-  { id: 'pack_25', usd: 25, credits: 3000 },
+  { id: 'pack_2',  usd: 2,  credits: 85 },
+  { id: 'pack_5',  usd: 5,  credits: 212 },
+  { id: 'pack_10', usd: 10, credits: 424 },
+  { id: 'pack_25', usd: 25, credits: 1059 },
 ] as const;
 
 // Voice chat (OpenAI Realtime API, gpt-realtime-2.1-mini) — gated to Growth/Agency,

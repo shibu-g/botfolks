@@ -2,7 +2,7 @@ import { useEffect, useState, type MouseEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '../lib/api';
-import { VOICE_ENABLED_PLANS, FREE_BONUS_CREDITS, type PlanId } from '@botfolks/shared';
+import { VOICE_ENABLED_PLANS, FREE_BONUS_CREDITS, OVERAGE_PER_CHAT_USD, type PlanId } from '@botfolks/shared';
 import { Icon } from '../components/Icon';
 import { Logo } from '../components/Logo';
 
@@ -203,6 +203,7 @@ function HeroVisual() {
 export default function Landing() {
   const q = useQuery({ queryKey: ['plans'], queryFn: () => api('/billing/plans') });
   const plans: Record<string, any> = q.data?.plans ?? {};
+  const packs: { id: string; usd: number; credits: number }[] = q.data?.packs ?? [];
   const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {
@@ -214,7 +215,7 @@ export default function Landing() {
   // Anonymized market comparison — figures describe a typical AI chat-widget
   // tool's public starting plan, not any named competitor.
   const typical = { price: 39, replies: 50 };
-  const ours = { price: 19, chats: 2000 };
+  const ours = { price: 19, chats: 805 };
   const typicalPerUnit = typical.price / typical.replies;
   const oursPerUnit = ours.price / ours.chats;
   const maxPerUnit = Math.max(typicalPerUnit, oursPerUnit);
@@ -373,7 +374,9 @@ export default function Landing() {
               <a className="btn ghost" href="mailto:hello@botfolks.in?subject=Partnership%20%2F%20custom%20plan">💬 Talk to us</a>
             </div>
           </div>
-          <p className="muted small">Extra chats beyond your plan: $0.008 each, with a monthly cap you set. Credit packs: $2 = 130 · $5 = 500 · $10 = 1,100 · $25 = 3,000 (1 credit = $0.01).</p>
+          <p className="muted small">
+            Extra chats beyond your plan: ${OVERAGE_PER_CHAT_USD.toFixed(3)} each, with a monthly cap you set. Credit packs: {packs.map((p) => `$${p.usd} = ${p.credits}`).join(' · ')} (1 credit = $0.01).
+          </p>
 
           <div className="guarantee">
             <div className="shield"><Icon><path d="M12 3 4.5 6.5v5c0 5 3.3 8 7.5 9.5 4.2-1.5 7.5-4.5 7.5-9.5v-5Z" /><path d="m9 12 2 2 4-4" /></Icon></div>

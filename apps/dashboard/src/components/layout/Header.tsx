@@ -1,10 +1,13 @@
 import { Link } from 'react-router-dom';
-import { Menu, Zap, Bell, Search, ArrowUpRight } from 'lucide-react';
-import { PLANS } from '@botfolks/shared';
+import { Menu, Bell, Search, ArrowUpRight } from 'lucide-react';
+import { PLANS, type PlanId } from '@botfolks/shared';
 import { Logo } from '../Logo';
 import { UserMenu } from './UserMenu';
+import { CreditsMenu } from './CreditsMenu';
 import { Button } from '../ui/Button';
 import type { Me } from '../../lib/types';
+
+const PLAN_ORDER: PlanId[] = ['free', 'starter', 'growth', 'agency'];
 
 export function Header({
   me,
@@ -17,7 +20,7 @@ export function Header({
   onToggleCollapse: () => void;
   hasUnread?: boolean;
 }) {
-  const isFree = me.plan === 'free';
+  const canUpgrade = PLAN_ORDER.indexOf(me.plan) < PLAN_ORDER.length - 1;
 
   function handleHamburgerClick() {
     if (typeof window !== 'undefined' && window.matchMedia('(min-width: 1024px)').matches) {
@@ -60,16 +63,13 @@ export function Header({
       <div className="flex-1 lg:hidden" />
 
       <div className="flex shrink-0 items-center gap-2 sm:gap-3">
-        <div className="hidden h-9 items-center gap-1.5 whitespace-nowrap rounded-full border border-line bg-surface-2 px-3 text-[13px] font-medium text-text md:flex">
-          <Zap size={14} className="shrink-0 text-accent" />
-          {me.credits} credits
-        </div>
+        <CreditsMenu credits={me.credits} />
 
         <div className="hidden items-center gap-2 md:flex">
           <span className="whitespace-nowrap rounded-full border border-line px-2.5 py-1 text-[13px] font-semibold text-muted">
             {PLANS[me.plan].name}
           </span>
-          {isFree && (
+          {canUpgrade && (
             <Button size="sm" onClick={() => (window.location.href = '/billing')} icon={<ArrowUpRight size={14} />}>
               Upgrade
             </Button>
